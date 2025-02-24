@@ -1,44 +1,44 @@
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
 from transformers import GPTNeoForCausalLM, GPT2Tokenizer
 import torch
 
-# Загрузка модели GPT-Neo и токенизатора
-model_name = "EleutherAI/gpt-neo-2.7B"  # Используем модель на 2.7 миллиарда параметров
+# Р—Р°РіСЂСѓР·РєР° РјРѕРґРµР»Рё GPT-Neo Рё С‚РѕРєРµРЅРёР·Р°С‚РѕСЂР°
+model_name = "EleutherAI/gpt-neo-2.7B"  # РСЃРїРѕР»СЊР·СѓРµРј РјРѕРґРµР»СЊ РЅР° 2.7 РјРёР»Р»РёР°СЂРґР° РїР°СЂР°РјРµС‚СЂРѕРІ
 tokenizer = GPT2Tokenizer.from_pretrained(model_name)
 model = GPTNeoForCausalLM.from_pretrained(model_name)
 
-# Функция для обработки команды /start
+# Р¤СѓРЅРєС†РёСЏ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё РєРѕРјР°РЅРґС‹ /start
 def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Привет! Я бот с GPT-Neo. Напишите мне что-нибудь, и я продолжу.')
+    update.message.reply_text('РџСЂРёРІРµС‚! РЇ Р±РѕС‚ СЃ GPT-Neo. РќР°РїРёС€РёС‚Рµ РјРЅРµ С‡С‚Рѕ-РЅРёР±СѓРґСЊ, Рё СЏ РїСЂРѕРґРѕР»Р¶Сѓ.')
 
-# Функция для генерации текста с помощью GPT-Neo
+# Р¤СѓРЅРєС†РёСЏ РґР»СЏ РіРµРЅРµСЂР°С†РёРё С‚РµРєСЃС‚Р° СЃ РїРѕРјРѕС‰СЊСЋ GPT-Neo
 def generate_text(prompt):
     inputs = tokenizer(prompt, return_tensors="pt")
     outputs = model.generate(inputs["input_ids"], max_length=100, do_sample=True, top_k=50)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-# Функция для обработки текстовых сообщений
+# Р¤СѓРЅРєС†РёСЏ РґР»СЏ РѕР±СЂР°Р±РѕС‚РєРё С‚РµРєСЃС‚РѕРІС‹С… СЃРѕРѕР±С‰РµРЅРёР№
 def handle_message(update: Update, context: CallbackContext) -> None:
     user_text = update.message.text
     response = generate_text(user_text)
     update.message.reply_text(response)
 
 def main() -> None:
-    # Вставьте сюда ваш токен Telegram бота
+    # Р’СЃС‚Р°РІСЊС‚Рµ СЃСЋРґР° РІР°С€ С‚РѕРєРµРЅ Telegram Р±РѕС‚Р°
     token = "8165087834:AAHZLnOdHLA6A85RbFRE9gLuSgd6zzv5Nmc"
     updater = Updater(token)
 
-    # Получаем диспетчер для регистрации обработчиков
+    # РџРѕР»СѓС‡Р°РµРј РґРёСЃРїРµС‚С‡РµСЂ РґР»СЏ СЂРµРіРёСЃС‚СЂР°С†РёРё РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ
     dispatcher = updater.dispatcher
 
-    # Регистрируем обработчик команды /start
+    # Р РµРіРёСЃС‚СЂРёСЂСѓРµРј РѕР±СЂР°Р±РѕС‚С‡РёРє РєРѕРјР°РЅРґС‹ /start
     dispatcher.add_handler(CommandHandler("start", start))
 
-    # Регистрируем обработчик текстовых сообщений
+    # Р РµРіРёСЃС‚СЂРёСЂСѓРµРј РѕР±СЂР°Р±РѕС‚С‡РёРє С‚РµРєСЃС‚РѕРІС‹С… СЃРѕРѕР±С‰РµРЅРёР№
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-    # Запускаем бота
+    # Р—Р°РїСѓСЃРєР°РµРј Р±РѕС‚Р°
     updater.start_polling()
     updater.idle()
 
