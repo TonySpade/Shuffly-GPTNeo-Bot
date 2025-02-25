@@ -1,46 +1,61 @@
 from telegram import Update
-from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext
-from transformers import GPTNeoForCausalLM, GPT2Tokenizer
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
+from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
 # Загрузка модели GPT-Neo и токенизатора
 model_name = "EleutherAI/gpt-neo-2.7B"  # Используем модель на 2.7 миллиарда параметров
-tokenizer = GPT2Tokenizer.from_pretrained(model_name)
-model = GPTNeoForCausalLM.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
+
+# Устанавливаем pad_token, если он не задан
+if tokenizer.pad_token is None:
+    tokenizer.pad_token = tokenizer.eos_token
 
 # Функция для обработки команды /start
-def start(update: Update, context: CallbackContext) -> None:
-    update.message.reply_text('Привет! Я бот с GPT-Neo. Напишите мне что-нибудь, и я продолжу.')
+async def start(update: Update, context: CallbackContext) -> None:
+    await update.message.reply_text('Привет! Я бот с GPT-Neo. Напишите мне что-нибудь, и я продолжу.')
 
 # Функция для генерации текста с помощью GPT-Neo
-def generate_text(prompt):
-    inputs = tokenizer(prompt, return_tensors="pt")
-    outputs = model.generate(inputs["input_ids"], max_length=100, do_sample=True, top_k=50)
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+def generate_text(input_text):
+    # Токенизация с созданием attention_mask
+    inputs = tokenizer(input_text, return_tensors="pt", padding=True, truncation=True)
+    input_ids = inputs["input_ids"]
+    attention_mask = inputs["attention_mask"]
+
+    # Генерация текста
+    outputs = model.generate(
+        input_ids=input_ids,
+        attention_mask=attention_mask,
+        max_length=255,
+        pad_token_id=tokenizer.pad_token_id
+    )
+
+    # Декодируем результат
+    generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return generated_text
 
 # Функция для обработки текстовых сообщений
-def handle_message(update: Update, context: CallbackContext) -> None:
-    user_text = update.message.text
-    response = generate_text(user_text)
-    update.message.reply_text(response)
+async def handle_message(update: Update, context: CallbackContext) -> None:
+    user_input = update.message.text  # Получаем текст от пользователя
+    generated_text = generate_text(user_input)  # Генерируем ответ
+    await update.message.reply_text(generated_text)  # Отправляем ответ
 
 def main() -> None:
     # Вставьте сюда ваш токен Telegram бота
     token = "8165087834:AAHZLnOdHLA6A85RbFRE9gLuSgd6zzv5Nmc"
-    updater = Updater(token)
 
-    # Получаем диспетчер для регистрации обработчиков
-    dispatcher = updater.dispatcher
+    # Создаем Application
+    application = Application.builder().token(token).build()
 
     # Регистрируем обработчик команды /start
-    dispatcher.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("start", start))
 
     # Регистрируем обработчик текстовых сообщений
-    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     # Запускаем бота
-    updater.start_polling()
-    updater.idle()
+    application.run_polling()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
