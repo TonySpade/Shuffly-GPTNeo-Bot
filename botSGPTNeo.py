@@ -4,7 +4,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
 # Загрузка модели GPT-Neo и токенизатора
-model_name = "EleutherAI/gpt-neo-2.7B"  # Используем модель на 2.7 миллиарда параметров
+model_name = "EleutherAI/gpt-neo-1.3B"  # Используем модель на 1.3 миллиарда параметров
 tokenizer = AutoTokenizer.from_pretrained(model_name)
 model = AutoModelForCausalLM.from_pretrained(model_name)
 
